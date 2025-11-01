@@ -13,7 +13,7 @@ COPY dataflow_starter_kit dataflow_starter_kit
 
 RUN pip install uv && uv pip install --system -e .
 
-ENV FLEX_TEMPLATE_PYTHON_PY_FILE="${WORKDIR}/dataflow_starter_kit/main.py"
+ENV FLEX_TEMPLATE_PYTHON_PY_FILE="${WORKDIR}/dataflow_starter_kit/pipeline.py"
 
 RUN pip check
 

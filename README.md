@@ -1,6 +1,39 @@
-# Dataflow Starter Kit
+# Dataflow Template Toolkit
 
-A simple Apache Beam pipeline template for Google Cloud Dataflow.
+A toolkit for creating standardized Apache Beam pipelines for Google Cloud Dataflow across your organization.
+
+## Overview
+
+This project provides:
+
+1. **Template** - A standardized Dataflow starter template
+2. **CLI Tool** - Command-line interface for creating new projects
+3. **MCP Server** - Model Context Protocol server for AI coding assistants
+
+## Structure
+
+```
+dataflow_template/
+│
+├── pyproject.toml                # Main env for CLI/MCP tools
+├── cli/
+│   └── cli.py                    # CLI tool for creating projects
+│
+├── mcp_server/
+│   └── mcp_server.py            # MCP server for AI assistants
+│
+├── template_files/               # The actual template
+│   ├── dataflow_starter_kit/
+│   │   ├── pipeline.py          # Main pipeline code
+│   │   ├── transforms/
+│   │   ├── options/
+│   │   └── utils/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # Template's pyproject.toml
+│   └── README.md
+│
+└── README.md                     # This file
+```
 
 ## Installation
 
@@ -12,136 +45,64 @@ uv sync
 pip install -e .
 ```
 
-## Running Locally
+## Usage
+
+### Creating a New Dataflow Project
 
 ```bash
-# Using DirectRunner
-python -m dataflow_starter_kit.main --input=1 --runner=DirectRunner
+# Using the CLI tool
+python -m cli.cli create /path/to/new/project
 
-# With multiple iterations
-python -m dataflow_starter_kit.main --input=5 --runner=DirectRunner
+# Or after installation
+dataflow-create create my-new-project
 ```
 
-## Docker Build and Test
+### Using MCP Server
 
-### Build the Docker image
+The MCP server enables AI coding assistants (Cursor, Copilot, Claude) to create standardized projects.
+
+**Note**: The MCP server is designed to be run by AI coding assistants, not for manual interaction. For manual usage, use the CLI instead.
+
+See `mcp_server/README.md` for configuration details.
+
+### Template Structure
+
+Each project created from the template includes:
+
+- **pipeline.py** - Main pipeline entry point
+- **transforms/** - Reusable Beam transforms
+- **options/** - Custom pipeline options
+- **utils/** - Utility functions
+- **Dockerfile** - Container configuration
+- **pyproject.toml** - Project dependencies
+
+## Quick Start with Created Project
+
+After creating a project:
 
 ```bash
-docker build -t dataflow-template:latest .
+cd /path/to/new/project
+uv sync
+python -m dataflow_starter_kit.pipeline --input=1 --runner=DirectRunner
 ```
 
-### Test the Docker image locally
+## Deployment
 
-The Docker image is designed for Dataflow Flex Templates. To test locally:
+See `template_files/README.md` for detailed deployment instructions including:
 
-```bash
-# Option 1: Run without Docker (recommended for local testing)
-python -m dataflow_starter_kit.main --input=1 --runner=DirectRunner
+- Local testing with DirectRunner
+- Docker builds
+- Google Cloud Dataflow deployment
+- Flex template creation
 
-# Option 2: Run inside Docker container
-docker run --rm --entrypoint /bin/bash dataflow-template:latest \
-  -c "python -m dataflow_starter_kit.main --input=1 --runner=DirectRunner"
+## Contributing
 
-# Option 3: Interactive shell for debugging
-docker run --rm -it --entrypoint /bin/bash dataflow-template:latest
-```
+To update the template:
 
-## Deployment to Google Cloud Dataflow
+1. Modify files in `template_files/`
+2. Test with: `python -m cli.cli create /tmp/test-project`
+3. Verify the created project works correctly
 
-### Build and push to Artifact Registry
+## License
 
-```bash
-# Set your project and location
-export PROJECT_ID=your-project-id
-export REGION=us-east4  # or us-central1
-export REPO_NAME=cloud-run-ai  # your Artifact Registry repo
-export IMAGE_NAME=dataflow-template
-
-# Build and push to Artifact Registry
-docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest .
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
-```
-
-### Create Flex Template
-
-```bash
-# Create staging bucket if it doesn't exist
-gsutil mb -l ${REGION} gs://dataflow-staging-${REGION}-${PROJECT_ID}
-
-# Build Flex template (without metadata for simplicity)
-gcloud dataflow flex-template build \
-  gs://dataflow-staging-${REGION}-${PROJECT_ID}/templates/${IMAGE_NAME}.json \
-  --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest \
-  --sdk-language PYTHON
-
-# Or with metadata file (optional)
-# gcloud dataflow flex-template build \
-#   gs://dataflow-staging-${REGION}-${PROJECT_ID}/templates/${IMAGE_NAME}.json \
-#   --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest \
-#   --sdk-language PYTHON \
-#   --metadata-file flex-template-metadata.json
-```
-
-### Run Flex Template on Dataflow
-
-```bash
-# Enable Dataflow API if not already enabled
-gcloud services enable dataflow.googleapis.com
-
-# Run the Flex template
-gcloud dataflow flex-template run dataflow-template-$(date +%Y%m%d-%H%M%S) \
-  --template-file-gcs-location gs://dataflow-staging-${REGION}-${PROJECT_ID}/templates/${IMAGE_NAME}.json \
-  --region ${REGION} \
-  --parameters input=1
-
-# Check job status
-gcloud dataflow jobs list --region ${REGION} --limit 5
-```
-
-### Alternative: Run directly with DataflowRunner
-
-```bash
-python -m dataflow_starter_kit.main \
-  --input=1 \
-  --runner=DataflowRunner \
-  --project=${PROJECT_ID} \
-  --region=${REGION} \
-  --temp_location=gs://dataflow-staging-${REGION}-${PROJECT_ID}/temp \
-  --flex_container_image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
-```
-
-## Pipeline Description
-
-This pipeline:
-
-1. Creates input data (F1 lap times by driver)
-2. Processes each element to extract lap times
-3. Aggregates total lap time using sum
-
-### Example Input
-
-```
-Hamilton - 83.456
-Verstappen - 82.789
-Leclerc - 81.234
-Sainz - 80.567
-```
-
-### Example Output
-
-```
-Total time: 328.046s
-```
-
-## Project Structure
-
-```
-dataflow_starter_kit/
-├── main.py                 # Pipeline entry point
-├── transforms/
-│   └── transform.py        # ProcessElement transform
-├── options/
-│   └── starter_kit_options.py  # Custom pipeline options
-└── utils/
-    └── config.py           # Configuration constants
-```
+[Your License Here]

@@ -1,9 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "dataflow-template"
+name = "dataflow_template"
 version = "0.1.0"
-description = "Dataflow Starter Kit"
+description = "Unified Dataflow template with CLI and MCP server"
+authors = [{ name = "Bharath Velamala" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "apache-beam[gcp]>=2.66.0",
+    "click>=8.3.0",
+    "mcp>=1.20.0",
 ]
+
+[project.scripts]
+dataflow-create = "cli.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
