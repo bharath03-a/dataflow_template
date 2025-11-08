@@ -8,6 +8,5 @@ class DataflowStarterKitOptions(PipelineOptions):
     def _add_argparse_args(cls, parser):
         """Add custom command-line arguments."""
         parser.add_argument(
-            '--input',
-            default='1',
-            help='Input multiplier (number of times to repeat input data)')
+            "--input", default="1", help="Input multiplier (number of times to repeat input data)"
+        )

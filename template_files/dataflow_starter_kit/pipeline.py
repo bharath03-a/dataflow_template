@@ -23,23 +23,22 @@ def run():
     with beam.Pipeline(options=pipeline_options) as p:
         # Create input data (repeat based on input argument)
         input_data = config.INPUT_DATA * input_count
-        lines = p | 'CreateInput' >> beam.Create(input_data)
+        lines = p | "CreateInput" >> beam.Create(input_data)
 
         # Apply transform
-        transformed = lines | 'ProcessElement' >> beam.ParDo(ProcessElement())
+        transformed = lines | "ProcessElement" >> beam.ParDo(ProcessElement())
 
         # Aggregate results
-        total = transformed | 'SumAll' >> beam.CombineGlobally(sum)
+        total = transformed | "SumAll" >> beam.CombineGlobally(sum)
 
         # Log/print results
-        _ = total | 'PrintResults' >> beam.Map(lambda x: logging.info(f"Total time: {x:.3f}s"))
+        _ = total | "PrintResults" >> beam.Map(lambda x: logging.info(f"Total time: {x:.3f}s"))
 
     logging.info("Pipeline completed successfully")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     run()

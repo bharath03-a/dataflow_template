@@ -20,7 +20,7 @@ class ProcessElement(beam.DoFn):
         """
         try:
             # Extract time from "Name - time" format
-            time_str = element.split('-')[1].strip()
+            time_str = element.split("-")[1].strip()
             processed = float(time_str)
             logging.info(f"Element - {element} -> {processed}")
             yield processed
