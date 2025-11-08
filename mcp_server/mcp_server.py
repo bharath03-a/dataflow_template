@@ -27,7 +27,7 @@ mcp = FastMCP[Any](name="Dataflow Template MCP", stateless_http=True)
 class TransportType(str, Enum):
     """Supported transport types for the MCP server."""
     STDIO = "stdio"
-    HTTP = "http"
+    HTTP = "streamable-http"
     SSE = "sse"
 
 
@@ -174,21 +174,30 @@ def get_server_config() -> tuple[TransportType, str, int]:
     """
     Get server configuration from environment variables.
     
+    Cloud Run compatibility: Checks PORT env var first (set by Cloud Run),
+    then falls back to MCP_PORT.
+    
     Returns:
         Tuple of (transport_type, host, port)
     """
     transport_str = os.getenv("MCP_TRANSPORT", DEFAULT_TRANSPORT).lower()
+    # Map "http" to "streamable-http" for backward compatibility
+    if transport_str == "http":
+        transport_str = "streamable-http"
+    
     try:
         transport = TransportType(transport_str)
     except ValueError:
         logger.warning(f"Invalid transport '{transport_str}', defaulting to {DEFAULT_TRANSPORT}")
-        transport = TransportType(DEFAULT_TRANSPORT)
+        transport = TransportType.STDIO
     
     host = os.getenv("MCP_HOST", DEFAULT_HOST)
+    # Cloud Run sets PORT environment variable, check that first
+    port_str = os.getenv("PORT") or os.getenv("MCP_PORT", str(DEFAULT_PORT))
     try:
-        port = int(os.getenv("MCP_PORT", str(DEFAULT_PORT)))
+        port = int(port_str)
     except ValueError:
-        logger.warning(f"Invalid port, defaulting to {DEFAULT_PORT}")
+        logger.warning(f"Invalid port '{port_str}', defaulting to {DEFAULT_PORT}")
         port = DEFAULT_PORT
     
     return transport, host, port
@@ -201,9 +210,20 @@ def run_server():
     if transport == TransportType.STDIO:
         logger.info("Starting stdio server")
         mcp.run(transport=transport.value)
+    elif transport == TransportType.HTTP:
+        # For HTTP transport, use uvicorn with the ASGI app
+        import uvicorn
+        logger.info(f"Starting HTTP server on {host}:{port}")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host=host, port=port, log_level="info")
+    elif transport == TransportType.SSE:
+        logger.info(f"Starting SSE server on {host}:{port}")
+        # For SSE, use the SSE app with uvicorn
+        import uvicorn
+        app = mcp.sse_app()
+        uvicorn.run(app, host=host, port=port, log_level="info")
     else:
-        logger.info(f"Starting {transport.value.upper()} server on {host}:{port}")
-        mcp.run(transport=transport.value, host=host, port=port)
+        raise ValueError(f"Unsupported transport type: {transport}")
 
 
 def main():
