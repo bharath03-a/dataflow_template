@@ -175,6 +175,179 @@ def health_check() -> str:
         return f"MCP server is alive, but health check failed: {str(e)}"
 
 
+@mcp.tool()
+def list_template_files() -> str:
+    """
+    List all files in the template directory with folder structure.
+
+    Returns:
+        JSON string with list of file paths and folder structure
+    """
+    try:
+        import json
+
+        template_dir = get_template_dir()
+        error = validate_template_dir(template_dir)
+        if error:
+            return error
+
+        files = []
+        dirs_list = []
+        structure = {"files": [], "directories": [], "tree": ""}
+
+        def build_tree_string(path: Path, prefix: str = "", is_last: bool = True) -> str:
+            """Build a tree string representation."""
+            lines = []
+            connector = "└── " if is_last else "├── "
+            item_name = f"{path.name}/" if path.is_dir() else path.name
+            lines.append(f"{prefix}{connector}{item_name}")
+
+            if path.is_dir():
+                extension = "    " if is_last else "│   "
+                filtered_items = [
+                    p
+                    for p in path.iterdir()
+                    if not p.name.startswith(".") and p.name != "__pycache__"
+                ]
+                children = sorted(filtered_items)
+                for i, child in enumerate(children):
+                    is_last_child = i == len(children) - 1
+                    child_result = build_tree_string(child, prefix + extension, is_last_child)
+                    lines.extend(child_result.split("\n"))
+
+            return "\n".join(lines)
+
+        # Build flat list and tree structure
+        for root, dirs, filenames in os.walk(template_dir):
+            # Filter hidden and cache directories
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+
+            for dirname in dirs:
+                dir_path = Path(root) / dirname
+                rel_path = dir_path.relative_to(template_dir)
+                if str(rel_path) not in dirs_list:
+                    dirs_list.append(str(rel_path))
+
+            for filename in filenames:
+                if filename.startswith(".") or filename.endswith(".pyc"):
+                    continue
+                file_path = Path(root) / filename
+                relative_path = file_path.relative_to(template_dir)
+                files.append(str(relative_path))
+
+        # Build tree string starting from template root
+        tree_lines = [f"{template_dir.name}/"]
+        filtered_items = [
+            p
+            for p in template_dir.iterdir()
+            if not p.name.startswith(".") and p.name != "__pycache__"
+        ]
+        children = sorted(filtered_items)
+        for i, child in enumerate(children):
+            is_last = i == len(children) - 1
+            tree_lines.append(build_tree_string(child, "", is_last))
+
+        structure["files"] = sorted(files)
+        structure["directories"] = sorted(dirs_list)
+        structure["tree"] = "\n".join(tree_lines)
+
+        return json.dumps(structure, indent=2)
+    except Exception as e:
+        return handle_error(e, "Error listing template files")
+
+
+@mcp.tool()
+def get_template_file_content(file_path: str) -> str:
+    """
+    Get the content of a specific template file.
+
+    Args:
+        file_path: Relative path to the file within the template directory
+                  (e.g., "pipeline.py" or "dataflow_starter_kit/pipeline.py")
+
+    Returns:
+        File content as string, or error message
+    """
+    try:
+        template_dir = get_template_dir()
+        error = validate_template_dir(template_dir)
+        if error:
+            return error
+
+        file_path_obj = Path(file_path)
+        # Prevent path traversal attacks
+        if ".." in str(file_path_obj) or file_path_obj.is_absolute():
+            return "Error: Invalid file path"
+
+        full_path = template_dir / file_path_obj
+        if not full_path.exists():
+            return f"Error: File not found: {file_path}"
+
+        if not full_path.is_file():
+            return f"Error: Path is not a file: {file_path}"
+
+        # Ensure the file is within the template directory
+        try:
+            full_path.resolve().relative_to(template_dir.resolve())
+        except ValueError:
+            return "Error: Invalid file path"
+
+        content = full_path.read_text(encoding="utf-8")
+        return content
+    except UnicodeDecodeError:
+        return f"Error: File is not a text file: {file_path}"
+    except Exception as e:
+        logger.exception(f"Error reading template file: {file_path}")
+        return f"Error reading file: {str(e)}"
+
+
+@mcp.resource("template://{file_path}")
+async def get_template_file_resource(file_path: str) -> str:
+    """
+    Get the content of a template file as a resource.
+
+    This allows agents to read template files directly via MCP resources.
+    Access using URI: template://path/to/file
+
+    Args:
+        file_path: Relative path to the file within the template directory
+
+    Returns:
+        File content as string
+    """
+    try:
+        template_dir = get_template_dir()
+        error = validate_template_dir(template_dir)
+        if error:
+            return f"Error: {error}"
+
+        file_path_obj = Path(file_path)
+        # Prevent path traversal attacks
+        if ".." in str(file_path_obj) or file_path_obj.is_absolute():
+            return "Error: Invalid file path"
+
+        full_path = template_dir / file_path_obj
+        if not full_path.exists():
+            return f"Error: File not found: {file_path}"
+
+        if not full_path.is_file():
+            return f"Error: Path is not a file: {file_path}"
+
+        # Ensure the file is within the template directory
+        try:
+            full_path.resolve().relative_to(template_dir.resolve())
+        except ValueError:
+            return "Error: Invalid file path"
+
+        content = full_path.read_text(encoding="utf-8")
+        return content
+    except UnicodeDecodeError:
+        return f"Error: File is not a text file: {file_path}"
+    except Exception as e:
+        logger.exception(f"Error reading template file: {file_path}")
+        return f"Error reading file: {str(e)}"
+
+
 def get_server_config() -> tuple[TransportType, str, int]:
     """
     Get server configuration from environment variables.
