@@ -115,17 +115,34 @@ def handle_error(error: Exception, context: str) -> str:
     return error_msg
 
 
+def is_remote_server() -> bool:
+    """
+    Check if the server is running in remote mode (HTTP/SSE) vs local (stdio).
+
+    Returns:
+        True if running remotely, False if running locally
+    """
+    transport_str = os.getenv("MCP_TRANSPORT", DEFAULT_TRANSPORT).lower()
+    if transport_str == "http":
+        transport_str = "streamable-http"
+    return transport_str in ("streamable-http", "sse")
+
+
 @mcp.tool()
 async def create_dataflow_project(target_dir: str = ".") -> str:
     """
-    Copies the standard Dataflow template into the given target directory.
+    Creates a Dataflow project from the template.
+
+    When running locally (stdio): Creates files in the target directory.
+    When running remotely (HTTP/Cloud Run): Returns instructions and file contents
+    for the agent to create files locally.
 
     Args:
         target_dir: Target directory where the project should be created.
                    Defaults to current directory.
 
     Returns:
-        Success or error message.
+        Success message with file creation details, or instructions for remote mode.
     """
     try:
         template_dir = get_template_dir()
@@ -136,6 +153,11 @@ async def create_dataflow_project(target_dir: str = ".") -> str:
             logger.error(error)
             return error
 
+        # If running remotely, return instructions instead of creating files
+        if is_remote_server():
+            return _get_remote_creation_instructions(template_dir, target_dir)
+
+        # Local mode: actually create the files
         target_path = Path(target_dir).expanduser().resolve()
         error = validate_target_path(target_path)
         if error:
@@ -143,7 +165,14 @@ async def create_dataflow_project(target_dir: str = ".") -> str:
             return error
 
         logger.info(f"Creating Dataflow project at: {target_path}")
-        shutil.copytree(template_dir, target_path, dirs_exist_ok=True)
+        try:
+            shutil.copytree(template_dir, target_path, dirs_exist_ok=True)
+        except PermissionError as e:
+            return handle_error(e, "Permission denied when creating project")
+        except shutil.Error as e:
+            return handle_error(e, "Error copying template files")
+        except Exception as e:
+            return handle_error(e, "Unexpected error")
 
         success_msg = f"Dataflow project created successfully at: {target_path}"
         logger.info(success_msg)
@@ -155,6 +184,53 @@ async def create_dataflow_project(target_dir: str = ".") -> str:
         return handle_error(e, "Error copying template files")
     except Exception as e:
         return handle_error(e, "Unexpected error")
+
+
+def _get_remote_creation_instructions(template_dir: Path, target_dir: str) -> str:
+    """
+    Generate instructions for creating the project when running remotely.
+
+    Args:
+        template_dir: Path to template directory
+        target_dir: Target directory name
+
+    Returns:
+        Instructions with file structure and contents
+    """
+    try:
+        instructions = []
+        instructions.append(
+            f"Create Dataflow project in '{target_dir}' directory with the following structure:\n"
+        )
+
+        # Get file structure
+        files_info = []
+        for root, dirs, filenames in os.walk(template_dir):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+            for filename in filenames:
+                if filename.startswith(".") or filename.endswith(".pyc"):
+                    continue
+                file_path = Path(root) / filename
+                relative_path = file_path.relative_to(template_dir)
+                files_info.append(str(relative_path))
+
+        instructions.append(f"Files to create ({len(files_info)} files):")
+        for file_path in sorted(files_info):
+            instructions.append(f"  - {target_dir}/{file_path}")
+
+        instructions.append(
+            f"\nTo create these files, use the 'get_template_file_content' tool "
+            f"for each file, then create them in the '{target_dir}' directory."
+        )
+        instructions.append(
+            "\nFile contents are available via the 'get_template_file_content' tool "
+            "or MCP resources using URI pattern 'template://{file_path}'."
+        )
+
+        return "\n".join(instructions)
+    except Exception as e:
+        logger.exception("Error generating remote instructions")
+        return f"Error generating instructions: {str(e)}"
 
 
 @mcp.tool()
