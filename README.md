@@ -121,7 +121,7 @@ gcloud run deploy dataflow-mcp-server \
 Test the MCP server:
 
 ```bash
-python test_mcp_server.py
+python tests\test_mcp_server_remote.py
 ```
 
 Set `MCP_SERVER_URL` environment variable to test against a remote server.
