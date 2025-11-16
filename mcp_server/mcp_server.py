@@ -280,13 +280,11 @@ def _get_remote_creation_instructions(template_dir: Path, target_dir: str) -> st
         instructions.append(f"  → Create file: {target_dir}/README.md with returned content")
         instructions.append("\nTo create dataflow_starter_kit/pipeline.py:")
         instructions.append(
-            "  → Call: get_template_file_content("
-            '{"file_path": "dataflow_starter_kit/pipeline.py"})'
+            '  → Call: get_template_file_content({"file_path": "dataflow_starter_kit/pipeline.py"})'
         )
         instructions.append("  → Tool returns: file content string")
         instructions.append(
-            f"  → Create file: {target_dir}/dataflow_starter_kit/pipeline.py "
-            "with returned content"
+            f"  → Create file: {target_dir}/dataflow_starter_kit/pipeline.py with returned content"
         )
         instructions.append(
             "\n💡 NOTE: The file_path parameter is relative to the template directory "
@@ -429,8 +427,7 @@ def get_template_file_content(file_path: str) -> str:
     try:
         template_dir = get_template_dir()
         logger.debug(
-            f"get_template_file_content: template_dir={template_dir}, "
-            f"requested_file={file_path}"
+            f"get_template_file_content: template_dir={template_dir}, requested_file={file_path}"
         )
         error = validate_template_dir(template_dir)
         if error:
