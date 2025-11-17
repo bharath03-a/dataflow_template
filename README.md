@@ -8,7 +8,14 @@ MCP server and CLI tool for creating standardized Dataflow projects from templat
 
 **Demo Video**: Watch a walkthrough of using the MCP server with an AI coding assistant:
 
-<video src="demo/MCPDemo.mp4" controls width="100%"></video>
+<div align="center">
+  <video controls width="480">
+  <source src="https://raw.githubusercontent.com/bharath03-a/gcp-dataflow-template-kit/main/demo/MCPDemo.mp4" type="video/mp4">
+  Your browser does not support the video tag. Download it <a href="https://raw.githubusercontent.com/bharath03-a/gcp-dataflow-template-kit/main/demo/MCPDemo.mp4">here</a>.
+</video>
+</div>
+
+[📹 View Demo Video](demo/MCPDemo.mp4)
 
 ## What's Included
 
@@ -182,6 +189,31 @@ The following improvements are planned for future releases:
 - **Additional Language Templates**: Adding more templates for Java and Scala to support a broader range of Dataflow use cases
 - **Template Variations**: Providing different variations of templates (e.g., batch vs streaming, simple vs complex architectures) to better suit various project requirements
 - **Secure Authenticated Endpoint**: Implementing authentication for the MCP server endpoint to secure the public deployment and protect against unauthorized access
+
+## Contributing
+
+Contributions are welcome! We appreciate your help in making this project better. Here's how you can contribute:
+
+### How to Contribute
+
+1. **Fork the repository** and clone your fork locally
+2. **Create a branch** for your feature or bug fix:
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/your-bug-fix
+   ```
+3. **Make your changes** and ensure they follow the project's code style
+4. **Run tests and linting** to ensure everything passes:
+   ```bash
+   ruff check .
+   ruff format .
+   python tests/test_mcp_server_remote.py
+   ```
+5. **Commit your changes** with clear, descriptive commit messages
+6. **Push to your fork** and create a Pull Request
+
+Thank you for contributing! 🙏
 
 ---
 
